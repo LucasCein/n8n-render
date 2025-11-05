@@ -1,0 +1,234 @@
+[
+    {
+        "parameters": {
+            "resource": "databasePage",
+            "databaseId": {
+                "__rl": true,
+                "value": "125d5d1c-c1d5-80bb-a34a-efd9c47367a1",
+                "mode": "list",
+                "cachedResultName": "Proyectos - DB",
+                "cachedResultUrl": "https://www.notion.so/125d5d1cc1d580bba34aefd9c47367a1"
+            },
+            "title": "={{ $('If').item.json.subject.split(' ').last() }} | {{ $json.customer }}",
+            "simple": false,
+            "propertiesUi": {
+                "propertyValues": [
+                    {
+                        "key": "Nombre del proyecto|title",
+                        "title": "={{ $('If').item.json.subject.split(' ').last() }} | {{ $json.customer }}"
+                    },
+                    {
+                        "key": "Ingreso Proyecto|date",
+                        "includeTime": false,
+                        "date": "={{ new Date().toISOString().slice(0, 10) }}"
+                    },
+                    {
+                        "key": "Estatus proyecto|status",
+                        "statusValue": "To-Do"
+                    },
+                    {
+                        "key": "Tipo de proyecto|multi_select",
+                        "multiSelectValue": [
+                            "Producci\u00f3n"
+                        ]
+                    },
+                    {
+                        "key": "Deadline cliente|date",
+                        "includeTime": false,
+                        "date": "={{ $json.deadlineToISO }}"
+                    }
+                ]
+            },
+            "options": {
+                "iconType": "emoji"
+            }
+        },
+        "type": "n8n-nodes-base.notion",
+        "typeVersion": 2.2,
+        "position": [
+            880,
+            -96
+        ],
+        "id": "fb7b4667-b426-46bf-9c1c-ef7272cf7625",
+        "name": "Create a database page",
+        "credentials": {
+            "notionApi": {
+                "id": "57Jf4j0L5TciFuyI",
+                "name": "Notion account"
+            }
+        }
+    },
+    {
+        "parameters": {
+            "pollTimes": {
+                "item": [
+                    {
+                        "mode": "everyMinute"
+                    }
+                ]
+            },
+            "simple": false,
+            "filters": {
+                "q": "in:inbox -\"subject:DTP\" \"DTP\" -body:\"FILE PREP\" newer_than:2m",
+                "readStatus": "unread"
+            },
+            "options": {}
+        },
+        "type": "n8n-nodes-base.gmailTrigger",
+        "typeVersion": 1.3,
+        "position": [
+            -224,
+            0
+        ],
+        "id": "2c1ab40e-e722-4075-8c6a-f45ccb15f105",
+        "name": "Gmail Trigger",
+        "credentials": {
+            "gmailOAuth2": {
+                "id": "Khd6iBBOLycIebgx",
+                "name": "Gmail account"
+            }
+        }
+    },
+    {
+        "parameters": {
+            "jsCode": "let data=$input.first().json.snippet\nconsole.log({data})"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+            1104,
+            -384
+        ],
+        "id": "35e5df27-c708-4e32-bb03-04d64cb44d4c",
+        "name": "Code in JavaScript"
+    },
+    {
+        "parameters": {
+            "conditions": {
+                "options": {
+                    "caseSensitive": false,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 2
+                },
+                "conditions": [
+                    {
+                        "id": "47bc6413-9283-46d6-9648-af5371483e46",
+                        "leftValue": "={{ $json.textPlain }}",
+                        "rightValue": "DTP:",
+                        "operator": {
+                            "type": "string",
+                            "operation": "contains"
+                        }
+                    },
+                    {
+                        "id": "ca95c432-85bf-40f4-a53c-c1db853bd179",
+                        "leftValue": "={{ $json.textPlain }}",
+                        "rightValue": "subject : DTP",
+                        "operator": {
+                            "type": "string",
+                            "operation": "contains"
+                        }
+                    },
+                    {
+                        "id": "446bd230-9446-4134-90f7-6a78a52e6d25",
+                        "leftValue": "={{ $json.textPlain }}",
+                        "rightValue": "subject :DTP",
+                        "operator": {
+                            "type": "string",
+                            "operation": "contains"
+                        }
+                    }
+                ],
+                "combinator": "or"
+            },
+            "options": {
+                "ignoreCase": true
+            }
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+            416,
+            0
+        ],
+        "id": "fa9eff94-a164-46b9-93b3-e2304aef9fab",
+        "name": "If"
+    },
+    {
+        "parameters": {
+            "jsCode": "const body = ($input.first().json.textPlain || $input.first().json.text || \"\").trim();\n\n// ---------- CUSTOMER ----------\nconst customerMatch = body.match(/CUSTOMER:\\s*([\\s\\S]*?)(?:\\s+(?:DEADLINE|TOTAL|COMMENT|NOTE):|$)/i);\nconst customer = customerMatch ? customerMatch[1].trim().replace(/\\s+/g, \" \") : null;\n\n// ---------- DEADLINE ----------\nlet deadlineMatch =\n  body.match(/DEADLINE:\\s*from\\s+(.+?)\\s+to\\s+([^\\n\\r]+?)(?:\\s+(?:TOTAL|COMMENT|NOTE):|$)/i) ||\n  body.match(/DEADLINE:\\s*del\\s+(.+?)\\s+al\\s+([^\\n\\r]+?)(?:\\s+(?:TOTAL|COMMENT|NOTE):|$)/i) ||\n  body.match(/DEADLINE:\\s*(?:until|hasta)\\s+([^\\n\\r]+?)(?:\\s+(?:TOTAL|COMMENT|NOTE):|$)/i) ||\n  body.match(/DEADLINE:\\s*([^\\n\\r]+?)(?:\\s+(?:TOTAL|COMMENT|NOTE):|$)/i);\n\nlet fromRaw = null, toRaw = null;\nif (deadlineMatch) {\n  if (deadlineMatch.length >= 3) {\n    fromRaw = deadlineMatch[1].trim();\n    toRaw = (deadlineMatch[2] || \"\").trim();\n  } else {\n    fromRaw = (deadlineMatch[1] || \"\").trim();\n    toRaw = fromRaw;\n  }\n}\n\n// ---------- NORMALIZACI\u00d3N DE FECHAS ----------\nconst MONTHS = {\n  jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12,\n  ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,oct:10,nov:11,dic:12,\n};\n\nfunction toISO(s) {\n  if (!s) return null;\n  let t = s.replace(/[,\\.]/g, '').trim();\n\n  // Quita horas o sufijos tipo \"TOTAL\"\n  t = t.replace(/\\b\\d{1,2}:\\d{2}\\b/g, '').replace(/\\bTOTAL\\b.*/i, '').trim();\n\n  // YYYY-MM-DD\n  let m1 = t.match(/^(\\d{4})[-/](\\d{1,2})[-/](\\d{1,2})$/);\n  if (m1)\n    return `${m1[1]}-${m1[2].padStart(2, '0')}-${m1[3].padStart(2, '0')}`;\n\n  // 30 Sep 2025 / 30 septiembre 2025\n  let m2 = t.match(/^(\\d{1,2})\\s+([A-Za-z\u00c1\u00c9\u00cd\u00d3\u00da\u00d1\u00e1\u00e9\u00ed\u00f3\u00fa\u00f1]+)\\s+(\\d{4})$/);\n  // Sep 30 2025 / septiembre 30 2025\n  let m3 = t.match(/^([A-Za-z\u00c1\u00c9\u00cd\u00d3\u00da\u00d1\u00e1\u00e9\u00ed\u00f3\u00fa\u00f1]+)\\s+(\\d{1,2})\\s+(\\d{4})$/);\n\n  function mon(s) {\n    const k = s.toLowerCase().slice(0, 3).normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n    return MONTHS[k] || null;\n  }\n\n  if (m2) {\n    const d = m2[1], mo = mon(m2[2]), y = m2[3];\n    if (mo) return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;\n  }\n  if (m3) {\n    const mo = mon(m3[1]), d = m3[2], y = m3[3];\n    if (mo) return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;\n  }\n\n  // Fallback nativo\n  const dt = new Date(t);\n  if (!isNaN(dt)) {\n    const y = dt.getFullYear(), m = dt.getMonth() + 1, d = dt.getDate();\n    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;\n  }\n\n  return null;\n}\n\nconst deadlineFromISO = toISO(fromRaw);\nconst deadlineToISO   = toISO(toRaw || fromRaw);\n\n// ---------- RETURN ----------\nreturn [{\n  customer,\n  deadlineFromRaw: fromRaw,\n  deadlineToRaw: toRaw,\n  deadlineFromISO,\n  deadlineToISO,\n  hasDeadline: Boolean(deadlineFromISO),\n}];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+            624,
+            -96
+        ],
+        "id": "1bc4b17a-5302-47d8-b3c3-845057f0573c",
+        "name": "Code in JavaScript1"
+    },
+    {
+        "parameters": {
+            "resource": "databasePage",
+            "operation": "get",
+            "pageId": {
+                "__rl": true,
+                "value": "https://www.notion.so/text-in-process/OP26742-DIN-032-SEIU-287d5d1cc1d58057a2e4d7ca1129bc85",
+                "mode": "url"
+            },
+            "simple": false
+        },
+        "type": "n8n-nodes-base.notion",
+        "typeVersion": 2.2,
+        "position": [
+            1088,
+            -240
+        ],
+        "id": "dd95d161-f6f6-494e-bcb6-6cfb05f9c9b0",
+        "name": "Get a database page",
+        "credentials": {
+            "notionApi": {
+                "id": "57Jf4j0L5TciFuyI",
+                "name": "Notion account"
+            }
+        }
+    },
+    {
+        "parameters": {
+            "resource": "thread",
+            "operation": "get",
+            "threadId": "={{ $json.threadId }}",
+            "simple": false,
+            "options": {}
+        },
+        "type": "n8n-nodes-base.gmail",
+        "typeVersion": 2.1,
+        "position": [
+            -16,
+            0
+        ],
+        "id": "f9d72297-00d7-41d0-bf32-beec5d523bb6",
+        "name": "Get a thread",
+        "webhookId": "6ee9c0c1-de94-444c-a2bb-3ca95ceba239",
+        "credentials": {
+            "gmailOAuth2": {
+                "id": "Khd6iBBOLycIebgx",
+                "name": "Gmail account"
+            }
+        }
+    },
+    {
+        "parameters": {
+            "jsCode": "// \u26a0\ufe0f Este nodo asume que viene de \"Gmail Thread \u2192 Get\" con Simplify: OFF (RAW).\n// Lee items[0].json.messages\n\n// ---------------- Entrada ----------------\nconst messages = $json.messages || [];\nif (!messages.length) return [];\n\n// ---------------- Helpers generales ----------------\nfunction b64urlDecode(str) {\n  if (!str) return \"\";\n  return Buffer.from(str.replace(/-/g, \"+\").replace(/_/g, \"/\"), \"base64\").toString(\"utf8\");\n}\n\nfunction decodeQP(str) {\n  if (!str) return \"\";\n  return str\n    .replace(/=\\r?\\n/g, \"\") // soft line breaks\n    .replace(/=([A-Fa-f0-9]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));\n}\n\n// --- NUEVO helper robusto para leer headers ---\nfunction getHeaderSmart(msg, name) {\n  const wanted = String(name || \"\").toLowerCase();\n\n  // 1) payload.headers (array est\u00e1ndar Gmail)\n  const ph = msg?.payload?.headers;\n  if (Array.isArray(ph)) {\n    const h = ph.find(x => String(x?.name || \"\").toLowerCase() === wanted);\n    if (h?.value) return h.value;\n  }\n\n  // 2) msg.headers (a veces los nodos devuelven un array aqu\u00ed)\n  const mh = msg?.headers;\n  if (Array.isArray(mh)) {\n    const h = mh.find(x => String(x?.name || \"\").toLowerCase() === wanted);\n    if (h?.value) return h.value;\n  }\n\n  // 3) header como propiedad directa del mensaje (caso \u201cSubject\u201d: \"Jobplacement OP...\")\n  const direct = Object.keys(msg || {}).find(k => k.toLowerCase() === wanted);\n  if (direct && msg[direct]) return msg[direct];\n\n  // 4) buscar recursivamente en parts[].headers\n  function findInParts(part) {\n    if (!part) return \"\";\n    if (Array.isArray(part.headers)) {\n      const h = part.headers.find(x => String(x?.name || \"\").toLowerCase() === wanted);\n      if (h?.value) return h.value;\n    }\n    if (Array.isArray(part.parts)) {\n      for (const p of part.parts) {\n        const v = findInParts(p);\n        if (v) return v;\n      }\n    }\n    return \"\";\n  }\n\n  const v = findInParts(msg?.payload);\n  if (v) return v;\n\n  return \"\";\n}\n\n\n// Recorre recursivamente y acumula text/html y text/plain\nfunction extractBodies(part) {\n  let html = \"\";\n  let plain = \"\";\n  if (!part) return { html, plain };\n\n  if (part.body?.data && part.mimeType) {\n    let data = b64urlDecode(part.body.data);\n\n    // Respeta Content-Transfer-Encoding si viene\n    const enc = (part.headers || []).find(\n      x => x.name?.toLowerCase() === \"content-transfer-encoding\"\n    )?.value?.toLowerCase();\n    if (enc?.includes(\"quoted-printable\")) data = decodeQP(data);\n\n    if (part.mimeType === \"text/html\") html += data;\n    else if (part.mimeType === \"text/plain\") plain += data;\n  }\n\n  if (Array.isArray(part.parts)) {\n    for (const p of part.parts) {\n      const sub = extractBodies(p);\n      html += sub.html;\n      plain += sub.plain;\n    }\n  }\n  return { html, plain };\n}\n\n// ---------------- Limpieza / normalizaci\u00f3n ----------------\nfunction stripQuotedHtml(html) {\n  if (!html) return \"\";\n  let h = html;\n\n  // Quitar quotes y bloques t\u00edpicos de Gmail/Outlook\n  h = h.replace(/<blockquote[\\s\\S]*?<\\/blockquote>/gi, \"\");\n  h = h.replace(/<div[^>]+class=[\"']?gmail_quote[\"']?[^>]*>[\\s\\S]*?<\\/div>/gi, \"\");\n  h = h.replace(/<div[^>]+class=[\"']?gmail_extra[\"']?[^>]*>[\\s\\S]*?<\\/div>/gi, \"\");\n  h = h.replace(/<div[^>]+id=[\"']?yiv[\\s\\S]*?<\\/div>/gi, \"\");\n  h = h.replace(/\\[cid:[^\\]]+\\]/gi, \"\");\n\n  // Cortes duros antes de convertir a texto\n  const cutMarkers = [\n    /-----\\s*Original Message\\s*-----/i,\n    /_{6,}/,                 // ________\n    /<hr[^>]*>/i\n  ];\n  for (const m of cutMarkers) {\n    const idx = h.search(m);\n    if (idx >= 0) { h = h.slice(0, idx); break; }\n  }\n  return h;\n}\n\nfunction htmlToText(html) {\n  if (!html) return \"\";\n  return html\n    .replace(/<style[\\s\\S]*?<\\/style>/gi, \"\")\n    .replace(/<script[\\s\\S]*?<\\/script>/gi, \"\")\n    .replace(/<br\\s*\\/?>/gi, \"\\n\")\n    .replace(/<\\/p>/gi, \"\\n\")\n    .replace(/<[^>]+>/g, \" \")\n    .replace(/&nbsp;/gi, \" \")\n    .replace(/&amp;/gi, \"&\")\n    .replace(/&lt;/gi, \"<\")\n    .replace(/&gt;/gi, \">\")\n    .replace(/\\r/g, \"\")\n    .replace(/\\t/g, \" \")\n    .replace(/[ \\u00A0]{2,}/g, \" \")\n    .replace(/\\n{3,}/g, \"\\n\\n\")\n    .trim();\n}\n\nfunction stripQuotedText(text) {\n  if (!text) return \"\";\n\n  // Quitar l\u00edneas que comienzan con \">\"\n  let t = text.replace(/(^|\\n)\\s*>.*/g, \"\");\n\n  // Cortar en marcadores t\u00edpicos de reply/forward\n  const patterns = [\n    /(^|\\n)\\s*-----\\s*Original Message\\s*-----.*/is,\n    /(^|\\n)\\s*On .+ wrote:.*/is,\n    /(^|\\n)\\s*El .* escribi[o\u00f3]:.*/is,\n    /(^|\\n)\\s*De:\\s*.*/is,\n    /(^|\\n)\\s*From:\\s*.*/is,\n    /(^|\\n)\\s*_{6,}.*/is\n  ];\n  for (const p of patterns) {\n    const m = t.match(p);\n    if (m && m.index !== undefined) {\n      t = t.slice(0, m.index).trim();\n      break;\n    }\n  }\n  return t;\n}\n\nfunction removeSignature(text) {\n  if (!text) return \"\";\n  const sigs = [\n    /best regards[\\s\\S]*$/i,\n    /kind regards[\\s\\S]*$/i,\n    /cheers[\\s\\S]*$/i,\n    /sincerely[\\s\\S]*$/i,\n    /project manager[\\s\\S]*$/i,\n    /text in process[\\s\\S]*$/i\n  ];\n  let out = text;\n  for (const s of sigs) out = out.replace(s, \"\").trim();\n  return out;\n}\n\n// Si el email tiene un saludo + luego el Work Order pegado, cortamos la \"cola\".\n// Si el correo ES el Work Order (empieza con esos marcadores), no cortamos.\nfunction cutWorkOrderTail(text) {\n  if (!text) return \"\";\n\n  const woMarkers = [\n    /(^|\\n)\\s*Please provide services in accordance with the following:/i,\n    /(^|\\n)\\s*SUBJECT:\\s*$/i,\n    /(^|\\n)\\s*CUSTOMER:\\s*$/i,\n    /(^|\\n)\\s*DEADLINE:\\s*$/i,\n    /(^|\\n)\\s*TOTAL:\\s*$/i,\n    /(^|\\n)\\s*COMMENT:\\s*$/i,\n    /(^|\\n)\\s*Please retrieve the files required/i\n  ];\n\n  const THRESHOLD = 40; // si aparece despu\u00e9s de 40 chars, consideramos \"cola\"\n\n  let cutIdx = -1;\n  for (const re of woMarkers) {\n    const m = text.match(re);\n    if (m && m.index !== undefined) {\n      if (m.index > THRESHOLD) {\n        cutIdx = (cutIdx === -1) ? m.index : Math.min(cutIdx, m.index);\n      }\n    }\n  }\n  if (cutIdx !== -1) return text.slice(0, cutIdx).trim();\n  return text;\n}\n\n// ---------------- Selecci\u00f3n del \u00faltimo mensaje ----------------\nmessages.sort((a, b) => Number(b.internalDate) - Number(a.internalDate));\nconst last = messages[0];\n\n// ---------------- Extracci\u00f3n de cuerpos ----------------\nconst { html: rawHtml, plain: rawPlain } = extractBodies(last.payload || last);\n\n// 1) Preferir text/plain limpio\nlet textPlain = rawPlain ? stripQuotedText(rawPlain).trim() : \"\";\n\n// 2) Fallback: usar HTML -> texto si el plain est\u00e1 vac\u00edo/corto\nif (!textPlain || textPlain.length < 30) {\n  const htmlSansQuotes = stripQuotedHtml(rawHtml);\n  textPlain = stripQuotedText(htmlToText(htmlSansQuotes));\n}\n\n// 3) Heur\u00edstica para cortar el WO que venga pegado debajo del saludo\ntextPlain = cutWorkOrderTail(textPlain);\n\n// 4) Limpieza final\ntextPlain = textPlain\n  .replace(/\\[cid:[^\\]]+\\]/gi, \"\")\n  .replace(/\\s+$/g, \"\");\ntextPlain = removeSignature(textPlain);\n\n// ---------------- Cabeceras (siempre desde headers) ----------------\nconst from = getHeaderSmart(last, \"From\");\nconst to = getHeaderSmart(last, \"To\");\nconst subject = getHeaderSmart(last, \"Subject\");\n\n\n// ---------------- Salida ----------------\nreturn [{\n  id: last.id,\n  threadId: last.threadId,\n  internalDate: last.internalDate,\n  from,\n  to,\n  subject,\n  textPlain,\n}];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+            192,
+            0
+        ],
+        "id": "14222dd0-e85d-4171-9e84-c439a4194c36",
+        "name": "Code in JavaScript2"
+    }
+]
